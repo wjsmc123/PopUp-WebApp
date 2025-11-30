@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #FDFCF8; /* Canvas White Base */
+  }
+}
+
+@layer utilities {
+  /* Hide Scrollbar */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  /* Theme: Silverstone - Technical Grid */
+  .bg-grid-pattern {
+    background-image: linear-gradient(to right, #F1EFEB 1px, transparent 1px),
+                      linear-gradient(to bottom, #F1EFEB 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Theme: Glastonbury - Wavy */
+  .wavy-bg {
+    background-image: radial-gradient(#FBCFE8 2px, transparent 2px);
+    background-size: 32px 32px;
+  }
+
+  /* Glassmorphism */
+  .glass {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
