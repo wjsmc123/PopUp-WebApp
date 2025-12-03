@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { MapPin, CloudSun, Wind, Map } from 'lucide-react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { LoadingScreen } from '@/components/LoadingScreen';
+import { ScheduleSkeletonList } from '@/components/Skeletons';
 import { useAuthStore } from '@/lib/store/authStore';
 import { getSchedule } from '@/app/actions';
 import { getThemeClasses } from '@/lib/utils';
@@ -13,43 +15,43 @@ import type { ScheduleItem } from '@/types';
 export default function HomePage() {
   const router = useRouter();
   const { user, eventData } = useAuthStore();
-  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
-  const hasFetchedSchedule = useRef<string | null>(null);
+  const eventId = user?.eventId;
 
   useEffect(() => {
     if (!user) {
-      hasFetchedSchedule.current = null;
       router.push('/login');
-      return;
     }
-
-    if (hasFetchedSchedule.current === user.eventId) {
-      return;
-    }
-
-    hasFetchedSchedule.current = user.eventId;
-    const fetchSchedule = async () => {
-      const items = await getSchedule(user.eventId);
-      setSchedule(items);
-    };
-
-    fetchSchedule();
   }, [user, router]);
+
+  const {
+    data: schedule = [],
+    isLoading,
+    isFetching,
+  } = useQuery<ScheduleItem[]>({
+    queryKey: ['schedule', eventId],
+    queryFn: () => getSchedule(eventId || ''),
+    enabled: Boolean(eventId),
+    placeholderData: (prev) => prev,
+    staleTime: 1000 * 60 * 2,
+  });
 
   if (!user) {
     return null;
   }
 
-  // If we have user but no eventData, render DashboardLayout so it can fetch it
   if (!eventData) {
-    return <DashboardLayout><LoadingScreen /></DashboardLayout>;
+    return (
+      <DashboardLayout>
+        <LoadingScreen />
+      </DashboardLayout>
+    );
   }
 
   const theme = getThemeClasses(eventData.theme);
+  const showSkeleton = (isLoading || isFetching) && schedule.length === 0;
 
   return (
     <DashboardLayout>
-      {/* Welcome */}
       <section className="animate-slide-up">
         <h2 className={`text-3xl ${theme.fontHeading} mb-1`}>
           Good Morning, <span className="opacity-50 italic">{user.firstName}.</span>
@@ -59,7 +61,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Weather Widgets */}
       <section className="grid grid-cols-2 gap-3 animate-slide-up" style={{ animationDelay: '100ms' }}>
         <div className={`bg-white p-4 border border-stone-200 ${theme.cardShape} flex flex-col justify-between h-32 relative overflow-hidden group hover:shadow-md transition-shadow`}>
           <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity duration-500">
@@ -88,9 +89,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Map Placeholder */}
       <section className={`h-48 bg-stone-900 ${theme.cardShape} relative overflow-hidden group shadow-lg animate-slide-up`} style={{ animationDelay: '200ms' }}>
-        {/* Abstract Map Graphic */}
         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '16px 16px' }}></div>
         <svg viewBox="0 0 200 100" className="absolute inset-0 w-full h-full stroke-stone-600 fill-none" strokeWidth="1">
           <path d="M20,50 Q50,10 80,50 T150,50 T200,80" />
@@ -106,7 +105,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Timeline */}
       <section className="animate-slide-up" style={{ animationDelay: '300ms' }}>
         <div className="flex items-center justify-between mb-4">
           <h3 className={`text-lg ${theme.fontHeading}`}>Today&apos;s Agenda</h3>
@@ -114,27 +112,31 @@ export default function HomePage() {
             {new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })}
           </span>
         </div>
-        <div className="space-y-4 pl-4 border-l-2 border-stone-200">
-          {schedule.length === 0 ? (
-            <p className="text-xs text-stone-400 italic">No scheduled events for today.</p>
-          ) : (
-            schedule.map((item) => (
-              <div key={item.id} className={`relative transition-opacity duration-300 ${!item.active ? 'opacity-50 hover:opacity-80' : ''}`}>
-                <div className={`absolute -left-[21px] top-1.5 w-3 h-3 rounded-full border-2 border-white ${item.active ? theme.accentBg : 'bg-stone-300'}`}></div>
-                <div className="flex flex-col">
-                  <div className="flex justify-between items-center">
-                    <span className={`text-xs font-bold ${item.active ? theme.accentText : 'text-stone-400'}`}>{item.time}</span>
-                    {item.active && (
-                      <span className={`text-[10px] uppercase ${theme.accentBg} text-white px-1.5 rounded animate-pulse`}>Live</span>
-                    )}
+        {showSkeleton ? (
+          <ScheduleSkeletonList theme={theme} />
+        ) : (
+          <div className="space-y-4 pl-4 border-l-2 border-stone-200">
+            {schedule.length === 0 ? (
+              <p className="text-xs text-stone-400 italic">No scheduled events for today.</p>
+            ) : (
+              schedule.map((item) => (
+                <div key={item.id} className={`relative transition-opacity duration-300 ${!item.active ? 'opacity-50 hover:opacity-80' : ''}`}>
+                  <div className={`absolute -left-[21px] top-1.5 w-3 h-3 rounded-full border-2 border-white ${item.active ? theme.accentBg : 'bg-stone-300'}`}></div>
+                  <div className="flex flex-col">
+                    <div className="flex justify-between items-center">
+                      <span className={`text-xs font-bold ${item.active ? theme.accentText : 'text-stone-400'}`}>{item.time}</span>
+                      {item.active && (
+                        <span className={`text-[10px] uppercase ${theme.accentBg} text-white px-1.5 rounded animate-pulse`}>Live</span>
+                      )}
+                    </div>
+                    <h4 className="font-medium">{item.title}</h4>
+                    <p className="text-xs text-stone-500">{item.type}</p>
                   </div>
-                  <h4 className="font-medium">{item.title}</h4>
-                  <p className="text-xs text-stone-500">{item.type}</p>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        )}
       </section>
     </DashboardLayout>
   );

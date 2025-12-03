@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Home, ShoppingBag, User, Settings } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ThemeClasses } from '@/types';
