@@ -7,6 +7,7 @@ import {
   mapSchedule, 
   mapProduct 
 } from '@/lib/utils';
+import { fetchWeatherForCoordinates } from '@/lib/weather';
 import type { UserProfile, EventConfig, ScheduleItem, Product } from '@/types';
 
 // Authentication Actions
@@ -63,7 +64,16 @@ export async function getEvent(eventId: string): Promise<EventConfig | null> {
       return null;
     }
 
-    return mapEvent(data);
+    const event = mapEvent(data);
+
+    if (event.coordinates) {
+      const liveWeather = await fetchWeatherForCoordinates(event.coordinates);
+      if (liveWeather) {
+        event.weather = liveWeather;
+      }
+    }
+
+    return event;
   } catch (error) {
     console.error('Get event error:', error);
     return null;

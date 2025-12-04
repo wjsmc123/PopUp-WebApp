@@ -42,7 +42,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       return getEvent(eventId);
     },
     enabled: Boolean(eventId),
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60 * 5,
+    refetchIntervalInBackground: true,
     gcTime: 1000 * 60 * 60,
   });
 
