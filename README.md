@@ -58,6 +58,13 @@ A modernized version of the PopUp concierge experience rebuilt on the Next.js Ap
 | `npm run start` | Serve the production build. |
 | `npm run lint` | Run ESLint using Next.js defaults. |
 | `npm run verify` | Sanity-check required environment variables and tooling. |
+| `npm run test` | Run all unit tests in watch mode. |
+| `npm run test:ui` | Open Vitest UI dashboard to visualize test runs. |
+| `npm run test:security` | Run comprehensive security test suite (unit + client-side). |
+| `npm run test:e2e` | Run end-to-end browser tests against test database. |
+| `npm run test:e2e:ui` | Run E2E tests in interactive UI mode. |
+| `npm run security:scan` | Audit dependencies for known vulnerabilities. |
+| `npm run security:full` | Run all security checks: unit tests + E2E + npm audit. |
 
 ## Project Layout
 ```
@@ -98,7 +105,118 @@ scripts/
 - **Component Organization:** Feature-specific UI generally lives beside the route inside `app/`, while reusable primitives sit under `components/`.
 - **Styling:** Tailwind is the default. Theme tokens from `getThemeClasses` supply colors/typography per event theme.
 - **Type Safety:** Shared types (`UserProfile`, `EventConfig`, etc.) live in `types/`; mapping helpers in `lib/utils.ts` convert Supabase rows to these types.
-- **Testing / QA:** While no automated tests ship yet, `npm run verify` plus manual tab-by-tab smoke tests (home/shop/personal/settings) are recommended before pushing.
+
+## Testing & Security
+
+### Test Infrastructure
+The app includes a comprehensive security test suite with **70+ automated tests** covering authentication, input validation, injection prevention, and end-to-end browser security.
+
+**Testing Tools:**
+- **Vitest:** Unit test runner with jsdom environment for isolated testing (no real database access).
+- **Playwright:** End-to-end browser automation across Chrome, Firefox, Safari, and mobile viewports.
+- **dotenv:** Environment variable loading for separate test database configuration.
+
+### Running Tests
+
+**Unit & Client-Side Security Tests (Safe - Fully Mocked)**
+```bash
+npm run test:security
+```
+Runs 36+ tests covering:
+- SQL/NoSQL injection prevention
+- XSS attack blocking
+- Input validation (empty, null, length limits, special chars)
+- Authorization & access control
+- Error information disclosure
+- Timing attack resistance
+- Session/localStorage security
+
+**End-to-End Browser Tests (Against Separate Test Database)**
+```bash
+npm run test:e2e
+```
+Runs 25+ Playwright tests covering:
+- Full login flows and session management
+- Profile updates via browser
+- Real-time data synchronization
+- Offline behavior
+- Network security headers
+- DoS/rate-limiting scenarios
+
+**Interactive Test Dashboard**
+```bash
+npm run test:ui
+```
+Opens Vitest UI for visual test debugging at `http://localhost:51204`.
+
+**Full Security Audit**
+```bash
+npm run security:full
+```
+Runs all tests (unit + E2E) plus dependency vulnerability scanning.
+
+### Test Environment Setup
+
+**Important:** E2E tests run against a separate **test Supabase database**, never your production instance.
+
+1. **Create a test Supabase project:**
+   - Go to [supabase.com/dashboard](https://supabase.com/dashboard)
+   - Create a new project named `popup-webapp-test`
+   - Get the project URL and anon key from Settings → API
+
+2. **Duplicate your database schema:**
+   - Tables needed: `profiles`, `events`, `schedule_items`, `products`
+   - Use Supabase UI: Tables → right-click → Duplicate
+   - Or use `pg_dump` to export/import schema
+
+3. **Configure `.env.test`:**
+   ```bash
+   # .env.test (already created, fill in your test project values)
+   NEXT_PUBLIC_SUPABASE_URL=https://your-test-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-test-anon-key-here
+   TEST_USER_BOOKING_REF=TEST-SEC-001
+   TEST_USER_FIRST_NAME=Security
+   ```
+
+4. **Run E2E tests in parallel with dev server:**
+   ```bash
+   # Terminal 1: Start dev server (uses .env.local with production DB)
+   npm run dev
+
+   # Terminal 2: Run E2E tests (uses .env.test with test DB)
+   npm run test:e2e
+   ```
+
+### Test File Organization
+```
+tests/
+  setup.ts                     # Shared mock data and test config
+  security/
+    auth.test.ts               # Authentication & SQL injection prevention
+    client-side.test.ts        # Zustand/localStorage/session security
+  e2e/
+    security.spec.ts           # Browser-based security flows
+vitest.security.config.ts      # Test runner config (includes unit + client-side)
+vitest.config.ts               # Main unit test config
+playwright.config.ts           # E2E test config with dotenv loader
+```
+
+### CI/CD Integration
+To integrate tests into your CI pipeline (GitHub Actions, GitLab CI, etc.):
+```bash
+# Example GitHub Actions workflow
+npm run verify       # Check dependencies
+npm run test:security   # Run unit tests (safe, no DB)
+npm run lint         # Check code quality
+npm run security:scan   # Audit dependencies
+```
+
+For full E2E validation in CI, you'll need test database credentials as GitHub Secrets, then add `npm run test:e2e` to your workflow.
+
+## Development Guidelines
+- **Component Organization:** Feature-specific UI generally lives beside the route inside `app/`, while reusable primitives sit under `components/`.
+- **Styling:** Tailwind is the default. Theme tokens from `getThemeClasses` supply colors/typography per event theme.
+- **Type Safety:** Shared types (`UserProfile`, `EventConfig`, etc.) live in `types/`; mapping helpers in `lib/utils.ts` convert Supabase rows to these types.
 - **Deployments:** The app expects the same Supabase env vars at build and runtime. For production, run `npm run build` then `npm run start` behind your preferred hosting provider (Vercel, Fly, etc.).
 
 ## Troubleshooting
