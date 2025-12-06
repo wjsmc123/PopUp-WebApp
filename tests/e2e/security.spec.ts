@@ -234,28 +234,65 @@ test.describe('Authorization & Access Control E2E', () => {
     const protectedRoutes = ['/', '/shop', '/personal', '/settings'];
     
     for (const route of protectedRoutes) {
-      await page.goto(route);
+      // Navigate and wait for page to settle
+      await page.goto(route, { waitUntil: 'networkidle' });
       
-      // Should redirect to login
-      await page.waitForURL('**/login', { timeout: 5000 });
-      expect(page.url()).toContain('/login');
+      // Check if redirect button exists (shows "Almost there" page)
+      const redirectButton = page.locator('a:has-text("Continue to login")');
+      if (await redirectButton.count() > 0) {
+        // Wait for navigation when clicking the button
+        await Promise.all([
+          page.waitForNavigation({ waitUntil: 'networkidle' }),
+          redirectButton.click({ force: true })
+        ]);
+      }
+      
+      // Check that we ended up at login page
+      const currentUrl = page.url();
+      expect(currentUrl).toContain('/login');
     }
   });
 
   test('should not allow direct URL manipulation to bypass auth', async ({ page }) => {
     // Try to access protected route directly
-    await page.goto('/personal');
+    await page.goto('/personal', { waitUntil: 'networkidle' });
+    
+    // Check if redirect button exists (shows "Almost there" page)
+    let redirectButton = page.locator('a:has-text("Continue to login")');
+    if (await redirectButton.count() > 0) {
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle' }),
+        redirectButton.click({ force: true })
+      ]);
+    }
     
     // Should be redirected to login
-    await page.waitForURL('**/login', { timeout: 5000 });
+    let currentUrl = page.url();
+    expect(currentUrl).toContain('/login');
     
-    // Try adding query parameters
-    await page.goto('/personal?bypass=true');
-    await page.waitForURL('**/login', { timeout: 5000 });
+    // Try with query parameters
+    await page.goto('/personal?bypass=true', { waitUntil: 'networkidle' });
+    redirectButton = page.locator('a:has-text("Continue to login")');
+    if (await redirectButton.count() > 0) {
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle' }),
+        redirectButton.click({ force: true })
+      ]);
+    }
+    currentUrl = page.url();
+    expect(currentUrl).toContain('/login');
     
-    // Try hash parameters
-    await page.goto('/personal#admin');
-    await page.waitForURL('**/login', { timeout: 5000 });
+    // Try with hash parameters
+    await page.goto('/personal#admin', { waitUntil: 'networkidle' });
+    redirectButton = page.locator('a:has-text("Continue to login")');
+    if (await redirectButton.count() > 0) {
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle' }),
+        redirectButton.click({ force: true })
+      ]);
+    }
+    currentUrl = page.url();
+    expect(currentUrl).toContain('/login');
   });
 });
 
